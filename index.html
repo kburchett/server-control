@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Win2012 Server</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--fg:#e8eaf0;--muted:#9aa3b2;--on:#22c55e;--off:#ef4444;--wait:#f59e0b}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,Segoe UI,sans-serif}
+.card{background:var(--card);padding:32px;border-radius:16px;width:min(420px,calc(100vw - 32px));box-sizing:border-box;text-align:center}
+h1{margin:0 0 20px;font-size:20px}
+.dot{width:18px;height:18px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:8px;background:var(--muted)}
+#state{font-size:28px;font-weight:700;margin:8px 0 4px}
+#hint{color:var(--muted);min-height:44px;margin-bottom:20px}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:14px 0;width:47%;cursor:pointer;color:#fff}
+#on{background:var(--on)}#off{background:var(--off)}button:disabled{opacity:.35;cursor:default}
+code{background:#0003;padding:2px 6px;border-radius:6px}
+</style></head><body>
+<div class="card">
+  <h1>Windows Server 2012</h1>
+  <div><span class="dot" id="dot"></span><span id="state">Checking…</span></div>
+  <div id="hint"></div>
+  <button id="on">Turn ON</button> <button id="off">Turn OFF</button>
+</div>
+<script>
+
+// Key comes from a one-time setup link (#k=<base64 key>) and is kept only in this browser.
+const m = location.hash.match(/k=([A-Za-z0-9+/=]+)/);
+try { if (m) { localStorage.setItem('k', m[1]); history.replaceState(null, '', location.pathname); } } catch (e) {}
+let TOKEN = ''; try { TOKEN = atob(localStorage.getItem('k') || ''); } catch (e) {}
+const API = 'https://api.github.com/user/codespaces/win2012-q7946464967c45x6';
+const H = {Authorization: 'Bearer ' + TOKEN, Accept: 'application/vnd.github+json'};
+const $ = id => document.getElementById(id);
+let onSince = null;
+
+const LOOK = {
+  Available:   ['ON', 'var(--on)', 'Connect in MobaXterm: <code>bore.pub (admin)</code>'],
+  Shutdown:    ['OFF', 'var(--off)', 'Not using any hours.'],
+  Starting:    ['Starting…', 'var(--wait)', 'Usually under a minute.'],
+  Queued:      ['Starting…', 'var(--wait)', 'Usually under a minute.'],
+  Provisioning:['Starting…', 'var(--wait)', 'Usually under a minute.'],
+  ShuttingDown:['Turning off…', 'var(--wait)', 'Your files are saved.'],
+};
+
+async function refresh() {
+  try {
+    const r = await fetch(API, {headers: H, cache: 'no-store'});
+    if (!r.ok) throw new Error('GitHub said ' + r.status);
+    const s = (await r.json()).state;
+    let [label, color, hint] = LOOK[s] || [s, 'var(--wait)', ''];
+    if (s === 'Available') {
+      onSince ??= Date.now();
+      // ponytail: the public RDP tunnel needs a few minutes after a cold start; a timer, not a real probe (browsers can't test RDP).
+      if (Date.now() - onSince < 240000) hint = 'Server is ON. RDP link is warming up — if MobaXterm refuses, wait a minute and retry.<br>' + hint;
+    } else onSince = null;
+    $('state').textContent = label; $('dot').style.background = color; $('hint').innerHTML = hint;
+    $('on').disabled = s !== 'Shutdown'; $('off').disabled = s !== 'Available';
+  } catch (e) { $('state').textContent = 'Error'; $('dot').style.background = 'var(--off)'; $('hint').textContent = e.message; }
+}
+async function power(action) {
+  $('on').disabled = $('off').disabled = true;
+  $('hint').textContent = action === 'start' ? 'Sending ON…' : 'Sending OFF…';
+  const r = await fetch(API + '/' + action, {method: 'POST', headers: H}).catch(e => ({ok: false, status: e.message}));
+  if (!r.ok) $('hint').textContent = 'GitHub refused (' + r.status + '). Try again in a few seconds.';
+  setTimeout(refresh, 1500);
+}
+$('on').onclick = () => power('start');
+$('off').onclick = () => power('stop');
+if (!TOKEN) { $('state').textContent = 'Not set up'; $('hint').textContent = 'Open your setup link once on this device.'; $('on').disabled = $('off').disabled = true; }
+else { refresh(); setInterval(refresh, 5000); }
+</script></body></html>
