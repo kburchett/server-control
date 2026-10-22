@@ -63,6 +63,12 @@ async function power(action) {
 }
 $('on').onclick = () => power('start');
 $('off').onclick = () => power('stop');
-if (!TOKEN) { $('state').textContent = 'Not set up'; $('hint').textContent = 'Open your setup link once on this device.'; $('on').disabled = $('off').disabled = true; }
+if (!TOKEN) {
+  $('state').textContent = 'Not set up';
+  $('hint').innerHTML = 'Paste your setup link or code once on this device:<br><input id="code" style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:0;font:inherit" placeholder="setup link or code"><button id="save" style="width:100%;margin-top:8px;background:#3b82f6">Save</button>';
+  $('on').disabled = $('off').disabled = true;
+  $('save').onclick = () => { const v = $('code').value.trim(); const c = (v.match(/k=([A-Za-z0-9+/=]+)/) || [, v])[1];
+    try { atob(c); localStorage.setItem('k', c); location.reload(); } catch (e) { $('code').value = ''; $('code').placeholder = 'That code is not valid - try again'; } };
+}
 else { refresh(); setInterval(refresh, 5000); }
 </script></body></html>
