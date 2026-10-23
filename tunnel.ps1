@@ -13,7 +13,9 @@ foreach ($v in '0.5.0','0.5.1','0.5.2','0.6.0') {
   } catch { Write-Host "bore $v failed: $_" }
 }
 Set-Content "$d\run.cmd" "@echo off`r`n:a`r`n$d\bore.exe local 3389 --to bore.pub --port 58631 >> $d\bore.log 2>&1`r`ntimeout /t 5 /nobreak >nul`r`ngoto a" -Encoding Ascii
-schtasks /create /tn bore-rdp /tr "$d\run.cmd" /sc onstart /ru SYSTEM /rl HIGHEST /f | Out-Null
-schtasks /run /tn bore-rdp | Out-Null
+Set-Content "$dhide.vbs" "CreateObject(""WScript.Shell"").Run ""$dun.cmd"", 0, False" -Encoding Ascii
+# Runs at logon of this user (Windows here auto-logs on at boot); no admin rights needed.
+schtasks /create /tn bore-rdp /tr "wscript.exe $dhide.vbs" /sc onlogon /it /f | Out-Null
+Start-Process wscript.exe "$dhide.vbs"
 Start-Sleep 5; Get-Content "$d\bore.log" -Tail 3
 Write-Host "DONE - RDP tunnel: bore.pub:58631"
