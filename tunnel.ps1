@@ -1,4 +1,4 @@
-# Windows-side RDP tunnel: bore.pub:58631 -> this machine's RDP (3389). Runs at every boot as SYSTEM.
+# Windows-side RDP tunnel: bore.pub:62417 -> this machine's RDP (3389). Runs at every boot as SYSTEM.
 [Net.ServicePointManager]::SecurityProtocol = 'Tls12'
 $d = 'C:\bore'; New-Item -ItemType Directory -Force $d | Out-Null
 $wc = New-Object Net.WebClient
@@ -12,10 +12,10 @@ foreach ($v in '0.5.0','0.5.1','0.5.2','0.6.0') {
     if ($LASTEXITCODE -eq 0) { Write-Host "bore $v works: $out"; break }
   } catch { Write-Host "bore $v failed: $_" }
 }
-Set-Content "$d\run.cmd" "@echo off`r`n:a`r`n$d\bore.exe local 3389 --to bore.pub --port 58631 >> $d\bore.log 2>&1`r`ntimeout /t 5 /nobreak >nul`r`ngoto a" -Encoding Ascii
+Set-Content "$d\run.cmd" "@echo off`r`n:a`r`n$d\bore.exe local 3389 --to bore.pub --port 62417 >> $d\bore.log 2>&1`r`ntimeout /t 5 /nobreak >nul`r`ngoto a" -Encoding Ascii
 Set-Content "$d\hide.vbs" "CreateObject(""WScript.Shell"").Run ""$d\run.cmd"", 0, False" -Encoding Ascii
 # Runs at logon of this user (Windows here auto-logs on at boot); no admin rights needed.
 schtasks /create /tn bore-rdp /tr "wscript.exe $d\hide.vbs" /sc onlogon /it /f | Out-Null
 Start-Process wscript.exe "$d\hide.vbs"
 Start-Sleep 5; Get-Content "$d\bore.log" -Tail 3
-Write-Host "DONE - RDP tunnel: bore.pub:58631"
+Write-Host "DONE - RDP tunnel: bore.pub:62417"
